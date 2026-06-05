@@ -35,6 +35,7 @@ Route::middleware('guest')->group(function () {
 
     // Password reset
     Route::get('/forgot-password', [PasswordResetController::class, 'showForgotForm'])->name('password.forgot');
+    Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink'])->name('password.email');
 });
 
 // Auth routes

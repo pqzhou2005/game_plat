@@ -1,14 +1,33 @@
 <script setup>
-import { Link } from '@inertiajs/vue3'
+import { ref } from 'vue'
+import { Link, usePage } from '@inertiajs/vue3'
 import Default from '@/Layouts/Default.vue'
 import GameCard from '@/Components/GameCard.vue'
+import ServerSelectModal from '@/Components/ServerSelectModal.vue'
 
 const props = defineProps({
   game: Object,
   recommended: Array,
+  recentServerIds: Array,
 })
 
+const page = usePage()
+const user = page.props.auth?.user
+const showServerSelect = ref(false)
+
 const formatDate = (date) => new Date(date).toLocaleDateString('zh-CN')
+
+const handleStartGame = () => {
+  if (!user) {
+    router.visit('/login')
+    return
+  }
+  if (props.game.servers?.length) {
+    showServerSelect.value = true
+  } else {
+    router.visit(`/game/play/${props.game.id}`)
+  }
+}
 </script>
 
 <template>
@@ -36,15 +55,18 @@ const formatDate = (date) => new Date(date).toLocaleDateString('zh-CN')
             <p class="text-gray-600 mt-4 line-clamp-3">{{ game.description || '暂无介绍' }}</p>
 
             <div class="flex items-center space-x-4 mt-6">
-              <a v-for="entry in game.entries" :key="entry.id" :href="entry.entry_url" target="_blank"
-                class="bg-orange-500 text-white px-6 py-2.5 rounded-lg hover:bg-orange-600 transition font-medium">
-                {{ entry.entry_name }}
-              </a>
+              <button @click="handleStartGame"
+                class="bg-orange-500 text-white px-8 py-2.5 rounded-lg hover:bg-orange-600 transition font-medium text-lg">
+                开始游戏
+              </button>
               <Link :href="`/recharge?game_id=${game.id}`"
                 class="bg-gray-100 text-gray-700 px-6 py-2.5 rounded-lg hover:bg-gray-200 transition font-medium">
                 充值
               </Link>
             </div>
+            <p v-if="game.servers?.length" class="text-xs text-gray-400 mt-2">
+              共 {{ game.servers.length }} 个区服 · 点击「开始游戏」选择服务器进入
+            </p>
           </div>
         </div>
       </div>
@@ -97,4 +119,13 @@ const formatDate = (date) => new Date(date).toLocaleDateString('zh-CN')
       </div>
     </div>
   </Default>
+
+  <!-- Server Select Modal -->
+  <ServerSelectModal
+    v-if="showServerSelect"
+    :game="game"
+    :servers="game.servers"
+    :recent-server-ids="recentServerIds || []"
+    @close="showServerSelect = false"
+  />
 </template>

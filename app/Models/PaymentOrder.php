@@ -8,6 +8,9 @@ class PaymentOrder extends Model
     protected $fillable = [
         'order_no', 'user_id', 'game_id', 'server_id',
         'game_account', 'amount', 'status', 'paid_at',
+        'product_id', 'product_name', 'product_desc',
+        'role_id', 'role_name', 'ext',
+        'notify_status', 'notify_times', 'last_notify_at',
     ];
 
     protected function casts(): array
@@ -15,6 +18,8 @@ class PaymentOrder extends Model
         return [
             'amount' => 'decimal:2',
             'paid_at' => 'datetime',
+            'last_notify_at' => 'datetime',
+            'notify_times' => 'integer',
         ];
     }
 
@@ -31,5 +36,10 @@ class PaymentOrder extends Model
     public function flows(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(PaymentFlow::class);
+    }
+
+    public function gameNotifyLogs(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(GameNotifyLog::class, 'payment_order_id');
     }
 }

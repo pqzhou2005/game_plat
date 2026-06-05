@@ -33,6 +33,17 @@ class PaymentNotifyController extends Controller
             return response()->json(['msg' => '订单未支付', 'status' => 1]);
         }
 
+        // 金额校验 — 防止游戏方回调金额被伪造
+        $callbackAmount = (float)$request->money;
+        if (abs($callbackAmount - (float)$order->amount) > 0.01) {
+            \Illuminate\Support\Facades\Log::warning('游戏方回调金额不匹配', [
+                'order_no' => $order->order_no,
+                'expected' => $order->amount,
+                'actual' => $callbackAmount,
+            ]);
+            return response()->json(['msg' => '金额不匹配', 'status' => 1]);
+        }
+
         return response()->json(['msg' => '充值成功', 'status' => 0]);
     }
 }

@@ -65,6 +65,37 @@ class GameSsoConfigResource extends Resource
             Tables\Columns\IconColumn::make('enabled')->boolean()->label('状态'),
         ])->actions([
             Tables\Actions\EditAction::make(),
+            Tables\Actions\Action::make('test_login')
+                ->label('测试登录')
+                ->icon('heroicon-o-arrow-top-right-on-square')
+                ->color('gray')
+                ->url(fn(\App\Models\GameSsoConfig $record): string => $record->login_url)
+                ->openUrlInNewTab(),
+            Tables\Actions\Action::make('test_notify')
+                ->label('测试发货')
+                ->icon('heroicon-o-bolt')
+                ->color('warning')
+                ->action(function (\App\Models\GameSsoConfig $record): void {
+                    try {
+                        $order = \App\Models\PaymentOrder::where('game_id', $record->game_id)
+                            ->where('status', 'success')
+                            ->latest()
+                            ->first();
+                        if (!$order) {
+                            \Filament\Notifications\Notification::make()
+                                ->warning()->title('没有已支付的订单用于测试')->send();
+                            return;
+                        }
+                        $result = app(\App\Services\GamePayService::class)->resetNotifyStatus($order);
+                        if ($result) {
+                            \Filament\Notifications\Notification::make()->success()->title('测试发货成功')->send();
+                        } else {
+                            \Filament\Notifications\Notification::make()->warning()->title('测试发货失败')->body('请检查回调地址和payKey')->send();
+                        }
+                    } catch (\Exception $e) {
+                        \Filament\Notifications\Notification::make()->danger()->title('异常')->body($e->getMessage())->send();
+                    }
+                }),
         ]);
     }
 
