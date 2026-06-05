@@ -49,4 +49,4 @@ Route::middleware('auth')->group(function () {
 
 // Payment callbacks (no CSRF)
 Route::post('/payment/notify/{channel}', [PaymentController::class, 'notify'])->name('payment.notify')
-    ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
