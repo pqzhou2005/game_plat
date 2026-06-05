@@ -69,6 +69,17 @@ class PaymentService
             'paid_at' => now(),
         ]);
 
+        // Notify game developer server
+        if ($order->game_id) {
+            try {
+                app(\App\Services\GamePayService::class)->notifyGameServer($order);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Game pay notify failed: ' . $e->getMessage(), [
+                    'order_id' => $order->id,
+                ]);
+            }
+        }
+
         return 'success';
     }
 }
