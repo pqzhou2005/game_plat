@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\Game;
 use App\Models\GameCategory;
 use App\Models\GameServer;
+use App\Models\GameSsoConfig;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
 
@@ -60,6 +61,21 @@ class GameController extends Controller
         return Inertia::render('Servers', [
             'servers' => $query->paginate(30),
             'games' => Game::active()->orderBy('name')->get(['id', 'name']),
+        ]);
+    }
+
+    public function play(Game $game)
+    {
+        $config = GameSsoConfig::where('game_id', $game->id)->where('enabled', true)->first();
+
+        if (!$config) {
+            abort(404, '游戏接入配置未找到');
+        }
+
+        return Inertia::render('Game/Play', [
+            'game' => $game->load('category'),
+            'loginUrl' => $config->login_url,
+            'hasConfig' => true,
         ]);
     }
 }
