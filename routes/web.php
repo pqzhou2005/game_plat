@@ -16,6 +16,9 @@ Route::get('/games', [GameController::class, 'index'])->name('games.index');
 Route::get('/games/{game}', [GameController::class, 'show'])->name('games.show');
 Route::get('/servers', [GameController::class, 'servers'])->name('servers');
 
+// Game play
+Route::get('/game/play/{game}', [\App\Http\Controllers\GameController::class, 'play'])->name('game.play');
+
 // Guest routes
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
