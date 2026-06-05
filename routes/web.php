@@ -10,6 +10,9 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Route;
 
+// Aggregate payment gateway
+Route::get('/v2/pay/{orderNo}', [\App\Http\Controllers\PayAggregateController::class, 'redirect']);
+
 // Public routes
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/games', [GameController::class, 'index'])->name('games.index');
