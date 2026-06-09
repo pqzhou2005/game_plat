@@ -12,9 +12,11 @@ class LoginController extends Controller
 {
     public function __construct(private AuthService $authService) {}
 
-    public function create()
+    public function create(Request $request)
     {
-        return Inertia::render('Auth/Login');
+        return Inertia::render('Auth/Login', [
+            'redirect' => $request->input('redirect', ''),
+        ]);
     }
 
     public function store(LoginRequest $request)
@@ -26,6 +28,12 @@ class LoginController extends Controller
         );
 
         Auth::login($user, $request->boolean('remember'));
+
+        // 优先使用 redirect 参数，回退到 intended（由 auth 中间件设置）
+        $redirect = $request->input('redirect', '');
+        if ($redirect && !str_contains($redirect, '/login') && !str_contains($redirect, '/register')) {
+            return redirect($redirect);
+        }
 
         return redirect()->intended('/');
     }

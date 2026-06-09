@@ -1,6 +1,7 @@
 <?php
 namespace App\Filament\Resources;
 
+use App\Enums\GameServerStatus;
 use App\Filament\Resources\GameServerResource\Pages;
 use App\Models\GameServer;
 use Filament\Forms;
@@ -25,7 +26,7 @@ class GameServerResource extends Resource
             Forms\Components\TextInput::make('server_id')->label('服务端ID'),
             Forms\Components\DateTimePicker::make('open_time')->required()->label('开服时间'),
             Forms\Components\Select::make('status')
-                ->options([1 => '火爆', 2 => '推荐', 3 => '维护', 4 => '已满'])->default(1)->label('状态'),
+                ->options(GameServerStatus::labels())->default(GameServerStatus::HOT)->label('状态'),
             Forms\Components\Toggle::make('is_recommend')->label('推荐'),
         ]);
     }
@@ -38,8 +39,8 @@ class GameServerResource extends Resource
             Tables\Columns\TextColumn::make('open_time')->dateTime()->sortable()->label('开服时间'),
             Tables\Columns\TextColumn::make('status')
                 ->badge()
-                ->color(fn(int $state): string => match ($state) { 1 => 'success', 2 => 'warning', 3 => 'danger', 4 => 'gray' })
-                ->formatStateUsing(fn(int $state): string => match ($state) { 1 => '火爆', 2 => '推荐', 3 => '维护', 4 => '已满' })
+                ->color(fn(int $state): string => match ($state) { GameServerStatus::HOT => 'success', GameServerStatus::RECOMMEND => 'warning', GameServerStatus::MAINTENANCE => 'danger', GameServerStatus::FULL => 'gray' })
+                ->formatStateUsing(fn(int $state): string => GameServerStatus::labels()[$state] ?? $state)
                 ->label('状态'),
         ])->defaultSort('open_time', 'desc')
         ->actions([

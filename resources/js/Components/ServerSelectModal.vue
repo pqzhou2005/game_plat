@@ -2,6 +2,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { router } from '@inertiajs/vue3'
+import { GameServerStatus } from '@/statusMaps'
 
 const props = defineProps({
   game: { type: Object, required: true },
@@ -23,11 +24,6 @@ const filteredServers = computed(() => {
   return props.servers.filter(s =>
     s.name.toLowerCase().includes(searchQuery.value.toLowerCase())
   )
-})
-
-const serverStatus = (status) => ({
-  label: { 1: '火爆', 2: '推荐', 3: '维护', 4: '已满' }[status] || '未知',
-  color: { 1: 'text-green-600 bg-green-50', 2: 'text-orange-600 bg-orange-50', 3: 'text-gray-400 bg-gray-100', 4: 'text-red-600 bg-red-50' }[status] || 'text-gray-500 bg-gray-50',
 })
 
 const enterGame = () => {
@@ -75,8 +71,8 @@ const isMaintenance = props.game.status === 0
                   ? 'border-orange-500 bg-orange-50'
                   : 'border-gray-200 hover:border-gray-300']">
               <span class="font-medium text-gray-900">{{ server.name }}</span>
-              <span :class="['text-xs px-2 py-0.5 rounded-full', serverStatus(server.status).color]">
-                {{ serverStatus(server.status).label }}
+              <span :class="['text-xs px-2 py-0.5 rounded-full', GameServerStatus.badgeClass(server.status)]">
+                {{ GameServerStatus.label(server.status) }}
               </span>
             </button>
           </div>
@@ -97,8 +93,8 @@ const isMaintenance = props.game.status === 0
                 <span class="font-medium text-gray-900">{{ server.name }}</span>
                 <span class="bg-orange-100 text-orange-600 text-xs px-1.5 py-0.5 rounded">推荐</span>
               </div>
-              <span :class="['text-xs px-2 py-0.5 rounded-full', serverStatus(server.status).color]">
-                {{ serverStatus(server.status).label }}
+              <span :class="['text-xs px-2 py-0.5 rounded-full', GameServerStatus.badgeClass(server.status)]">
+                {{ GameServerStatus.label(server.status) }}
               </span>
             </button>
             <div v-if="!filteredServers.filter(s => s.is_recommend && s.status !== 3).length"
@@ -126,8 +122,8 @@ const isMaintenance = props.game.status === 0
               <span class="font-medium" :class="server.status === 3 ? 'text-gray-400' : 'text-gray-900'">
                 {{ server.name }}
               </span>
-              <span :class="['text-xs px-2 py-0.5 rounded-full', serverStatus(server.status).color]">
-                {{ serverStatus(server.status).label }}
+              <span :class="['text-xs px-2 py-0.5 rounded-full', GameServerStatus.badgeClass(server.status)]">
+                {{ GameServerStatus.label(server.status) }}
               </span>
             </button>
             <div v-if="!filteredServers.length" class="text-center py-8 text-gray-400 text-sm">

@@ -2,6 +2,10 @@
 import { useForm, Link } from '@inertiajs/vue3'
 import Default from '@/Layouts/Default.vue'
 
+const props = defineProps({
+  redirect: { type: String, default: '' },
+})
+
 const form = useForm({
   username: '',
   password: '',
@@ -9,7 +13,7 @@ const form = useForm({
 })
 
 const submit = () => {
-  form.post(route('login.store'))
+  form.post('/login' + (props.redirect ? '?redirect=' + encodeURIComponent(props.redirect) : ''))
 }
 </script>
 
@@ -43,7 +47,7 @@ const submit = () => {
               <input v-model="form.remember" type="checkbox" class="rounded border-gray-300 mr-2" />
               记住我
             </label>
-            <Link :href="route('password.forgot')" class="text-sm text-orange-600 hover:underline">
+            <Link href="/forgot-password" class="text-sm text-orange-600 hover:underline">
               忘记密码?
             </Link>
           </div>
@@ -55,7 +59,7 @@ const submit = () => {
 
           <p class="text-center text-sm text-gray-600">
             还没有账号？
-            <Link :href="route('register')" class="text-orange-600 hover:underline font-medium">立即注册</Link>
+            <Link href="/register" class="text-orange-600 hover:underline font-medium">立即注册</Link>
           </p>
         </form>
       </div>

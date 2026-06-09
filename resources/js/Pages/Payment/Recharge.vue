@@ -26,7 +26,7 @@ const submit = () => {
   if (customAmount.value && !selectedAmount.value) {
     form.amount = parseFloat(customAmount.value)
   }
-  form.post(route('recharge.store'))
+  form.post('/recharge')
 }
 </script>
 

@@ -18,6 +18,8 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/games', [GameController::class, 'index'])->name('games.index');
 Route::get('/games/{game}', [GameController::class, 'show'])->name('games.show');
 Route::get('/servers', [GameController::class, 'servers'])->name('servers');
+Route::get('/notices', [\App\Http\Controllers\NoticeController::class, 'index'])->name('notices.index');
+Route::get('/notices/{notice}', [\App\Http\Controllers\NoticeController::class, 'show'])->name('notices.show');
 
 // Game play
 Route::get('/game/play/{game}', [\App\Http\Controllers\GameController::class, 'play'])->name('game.play');
@@ -47,6 +49,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/user/settings', [UserController::class, 'settings'])->name('user.settings');
     Route::put('/user/settings', [UserController::class, 'updateSettings'])->name('user.settings.update');
     Route::get('/user/orders', [UserController::class, 'orders'])->name('user.orders');
+
+    // Real-name verification
+    Route::get('/verify-real-name', [UserController::class, 'verifyForm'])->name('verify.real-name');
+    Route::post('/user/verify-real-name', [UserController::class, 'verifyRealName'])->name('verify.real-name.submit');
 
     // Payment
     Route::get('/recharge', [PaymentController::class, 'create'])->name('recharge');

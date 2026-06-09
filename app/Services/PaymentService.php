@@ -1,6 +1,8 @@
 <?php
 namespace App\Services;
 
+use App\Enums\PaymentFlowStatus;
+use App\Enums\PaymentOrderStatus;
 use App\Models\PaymentConfig;
 use App\Models\PaymentOrder;
 use App\Models\PaymentFlow;
@@ -18,7 +20,7 @@ class PaymentService
             'server_id' => $serverId,
             'game_account' => $gameAccount,
             'amount' => $amount,
-            'status' => 'pending',
+            'status' => PaymentOrderStatus::PENDING,
         ]);
 
         return $order;
@@ -83,7 +85,7 @@ class PaymentService
             }
 
             // 3. 防止重复通知
-            if ($order->status === 'success') {
+            if ($order->status === PaymentOrderStatus::SUCCESS) {
                 return 'success';
             }
 
@@ -114,7 +116,7 @@ class PaymentService
                     'channel' => $channel,
                     'channel_order_no' => $channelOrderNo,
                     'channel_data' => json_decode(json_encode($result), true),
-                    'status' => 'success',
+                    'status' => PaymentFlowStatus::SUCCESS,
                 ]);
             } catch (\Illuminate\Database\QueryException $e) {
                 if (str_contains($e->getMessage(), 'uq_payment_flows_channel_order')) {
@@ -126,16 +128,22 @@ class PaymentService
 
             // 7. 更新订单状态
             $order->update([
-                'status' => 'success',
+                'status' => PaymentOrderStatus::SUCCESS,
                 'paid_at' => now(),
             ]);
 
             // 8. 通知游戏方发货
             if ($order->game_id) {
                 try {
-                    app(GamePayService::class)->notifyGameServer($order);
+                    $notifyOk = app(GamePayService::class)->notifyGameServer($order);
+                    if (!$notifyOk) {
+                        \Illuminate\Support\Facades\Log::warning('支付回调后首次发货失败', [
+                            'order_id' => $order->id, 'order_no' => $order->order_no,
+                            'game_id' => $order->game_id,
+                        ]);
+                    }
                 } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error('游戏发货通知失败', [
+                    \Illuminate\Support\Facades\Log::error('游戏发货通知异常', [
                         'order_id' => $order->id,
                         'error' => $e->getMessage(),
                     ]);
@@ -152,6 +160,83 @@ class PaymentService
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('支付回调未知异常', ['channel' => $channel, 'error' => $e->getMessage()]);
             return 'fail';
+        }
+    }
+
+    /**
+     * 退款
+     */
+    public function refund(PaymentOrder $order): array
+    {
+        if ($order->status !== PaymentOrderStatus::SUCCESS) {
+            return ['code' => 1, 'msg' => '该订单无法退款'];
+        }
+
+        $flow = PaymentFlow::where('order_id', $order->id)
+            ->where('status', PaymentFlowStatus::SUCCESS)
+            ->first();
+
+        if (!$flow || !$flow->channel_order_no) {
+            return ['code' => 1, 'msg' => '未找到支付流水，无法退款'];
+        }
+
+        $channel = $flow->channel;
+        $config = $this->getChannelConfig($channel);
+
+        if (empty($config)) {
+            return ['code' => 1, 'msg' => '支付渠道未配置'];
+        }
+
+        try {
+            $pay = Pay::{$channel}($config);
+
+            if ($channel === 'alipay') {
+                $result = $pay->refund([
+                    'out_trade_no' => $order->order_no,
+                    'trade_no' => $flow->channel_order_no,
+                    'refund_amount' => $order->amount,
+                    'refund_reason' => '用户申请退款',
+                ]);
+            } else {
+                // WeChat
+                $result = $pay->refund([
+                    'out_trade_no' => $order->order_no,
+                    'out_refund_no' => $order->order_no . 'R',
+                    'total_fee' => (int)($order->amount * 100),
+                    'refund_fee' => (int)($order->amount * 100),
+                ]);
+            }
+
+            // 记录退款流水
+            PaymentFlow::create([
+                'order_id' => $order->id,
+                'channel' => $channel,
+                'channel_order_no' => $flow->channel_order_no,
+                'channel_data' => json_decode(json_encode($result), true),
+                'status' => PaymentFlowStatus::REFUND,
+            ]);
+
+            // 更新订单
+            $order->update(['status' => PaymentOrderStatus::CLOSED]);
+
+            // 通知游戏方退款
+            if ($order->game_id) {
+                try {
+                    app(GamePayService::class)->notifyGameServer($order);
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('退款通知游戏方失败', [
+                        'order_id' => $order->id, 'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            return ['code' => 0, 'msg' => '退款成功'];
+        } catch (\Yansongda\Pay\Exception\ContainerException $e) {
+            return ['code' => 2, 'msg' => '退款调用失败: ' . $e->getMessage()];
+        } catch (\Yansongda\Pay\Exception\ServiceException $e) {
+            return ['code' => 2, 'msg' => '退款服务异常: ' . $e->getMessage()];
+        } catch (\Exception $e) {
+            return ['code' => 2, 'msg' => '退款异常: ' . $e->getMessage()];
         }
     }
 

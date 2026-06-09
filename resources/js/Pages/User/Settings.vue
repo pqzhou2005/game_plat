@@ -7,13 +7,17 @@ const props = defineProps({ user: Object })
 const form = useForm({
   mobile: props.user.mobile || '',
   email: props.user.email || '',
+  real_name: '',
+  id_card: '',
   current_password: '',
   new_password: '',
   new_password_confirmation: '',
 })
 
+const isVerified = props.user.id_card_verified_at
+
 const submit = () => {
-  form.put(route('user.settings.update'), { preserveScroll: true })
+  form.put('/user/settings', { preserveScroll: true })
 }
 </script>
 
@@ -25,9 +29,9 @@ const submit = () => {
         <div class="md:col-span-1">
           <div class="bg-white rounded-xl shadow p-6">
             <nav class="space-y-2">
-              <Link :href="route('user.dashboard')" class="block px-4 py-2 rounded hover:bg-gray-100 text-gray-700">个人主页</Link>
-              <Link :href="route('user.settings')" class="block px-4 py-2 rounded bg-gray-100 text-orange-600 font-medium">账户设置</Link>
-              <Link :href="route('user.orders')" class="block px-4 py-2 rounded hover:bg-gray-100 text-gray-700">充值记录</Link>
+              <Link :href="'/user'" class="block px-4 py-2 rounded hover:bg-gray-100 text-gray-700">个人主页</Link>
+              <Link :href="'/user/settings'" class="block px-4 py-2 rounded bg-gray-100 text-orange-600 font-medium">账户设置</Link>
+              <Link :href="'/user/orders'" class="block px-4 py-2 rounded hover:bg-gray-100 text-gray-700">充值记录</Link>
             </nav>
           </div>
         </div>
@@ -52,6 +56,29 @@ const submit = () => {
                 <input v-model="form.email" type="email"
                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" />
               </div>
+              <!-- 实名认证 -->
+              <template v-if="!isVerified">
+                <hr class="my-4" />
+                <div class="bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm p-3 rounded mb-4">
+                  实名认证后才能进入游戏。信息提交后将对接国家新闻出版署实名认证系统。
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">真实姓名</label>
+                    <input v-model="form.real_name" type="text"
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">身份证号</label>
+                    <input v-model="form.id_card" type="text"
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" />
+                  </div>
+                </div>
+              </template>
+              <div v-else class="bg-green-50 border border-green-200 text-green-700 text-sm p-3 rounded mb-4">
+                ✅ 已实名认证 ({{ user.id_card_verified_at }})
+              </div>
+
               <hr class="my-4" />
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">当前密码（修改密码时需要）</label>

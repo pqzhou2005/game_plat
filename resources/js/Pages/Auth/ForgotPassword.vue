@@ -5,7 +5,7 @@ import Default from '@/Layouts/Default.vue'
 const form = useForm({ email: '' })
 
 const submit = () => {
-  form.post(route('password.email'))
+  form.post('/forgot-password')
 }
 </script>
 
@@ -26,7 +26,7 @@ const submit = () => {
             {{ form.processing ? '发送中...' : '发送重置链接' }}
           </button>
           <p class="text-center text-sm">
-            <Link :href="route('login')" class="text-orange-600 hover:underline">返回登录</Link>
+            <Link href="/login" class="text-orange-600 hover:underline">返回登录</Link>
           </p>
         </form>
       </div>

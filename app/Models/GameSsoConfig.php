@@ -7,7 +7,7 @@ class GameSsoConfig extends Model
 {
     protected $fillable = [
         'game_id', 'platform_id', 'login_key', 'login_url',
-        'pay_key', 'pay_notify_url', 'server_open_url', 'enabled',
+        'pay_key', 'pay_notify_url', 'enabled',
     ];
 
     protected function casts(): array

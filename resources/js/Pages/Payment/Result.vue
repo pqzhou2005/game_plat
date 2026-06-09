@@ -1,13 +1,14 @@
 <script setup>
 import { Link } from '@inertiajs/vue3'
 import Default from '@/Layouts/Default.vue'
+import { PaymentOrderStatus } from '@/statusMaps'
 
 const props = defineProps({
   order: Object,
   payData: Object,
 })
 
-const isSuccess = props.order?.status === 'success'
+const isSuccess = props.order?.status === PaymentOrderStatus.SUCCESS
 </script>
 
 <template>
@@ -38,7 +39,7 @@ const isSuccess = props.order?.status === 'success'
             订单号：{{ order.order_no }}<br/>
             金额：¥{{ order.amount }}
           </div>
-          <Link :href="route('user.orders')"
+          <Link href="/user/orders"
             class="block bg-gray-100 text-gray-700 py-2.5 rounded-lg hover:bg-gray-200 transition">
             查看订单
           </Link>

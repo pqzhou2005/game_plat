@@ -1,7 +1,11 @@
 <?php
 namespace App\Filament\Resources;
 
+use App\Enums\NotifyStatus;
+use App\Enums\PaymentOrderStatus;
 use App\Filament\Resources\PaymentOrderResource\Pages;
+use App\Models\AdminAuditLog;
+use App\Models\PaymentOperationLog;
 use App\Models\PaymentOrder;
 use App\Services\GamePayService;
 use Filament\Forms;
@@ -27,7 +31,7 @@ class PaymentOrderResource extends Resource
             Forms\Components\TextInput::make('notify_status')->disabled()->label('发货状态'),
             Forms\Components\TextInput::make('notify_times')->disabled()->label('重试次数'),
             Forms\Components\Select::make('status')
-                ->options(['pending' => '处理中', 'success' => '成功', 'failed' => '失败', 'closed' => '已关闭'])
+                ->options(PaymentOrderStatus::labels())
                 ->label('状态'),
         ]);
     }
@@ -41,20 +45,18 @@ class PaymentOrderResource extends Resource
             Tables\Columns\TextColumn::make('status')
                 ->badge()
                 ->color(fn(string $state): string => match ($state) {
-                    'success' => 'success', 'pending' => 'warning', 'failed' => 'danger', default => 'gray',
+                    PaymentOrderStatus::SUCCESS => 'success', PaymentOrderStatus::PENDING => 'warning',
+                    PaymentOrderStatus::FAILED => 'danger', PaymentOrderStatus::CLOSED => 'gray', default => 'gray',
                 })
-                ->formatStateUsing(fn(string $state): string => match ($state) {
-                    'success' => '成功', 'pending' => '处理中', 'failed' => '失败', default => $state,
-                })
+                ->formatStateUsing(fn(string $state): string => PaymentOrderStatus::labels()[$state] ?? $state)
                 ->label('状态'),
             Tables\Columns\TextColumn::make('notify_status')
                 ->badge()
                 ->color(fn(?string $state): string => match ($state) {
-                    'success' => 'success', 'pending' => 'warning', 'failed' => 'danger', default => 'gray',
+                    NotifyStatus::SUCCESS => 'success', NotifyStatus::PENDING => 'warning',
+                    NotifyStatus::FAILED => 'danger', default => 'gray',
                 })
-                ->formatStateUsing(fn(?string $state): string => match ($state) {
-                    'success' => '已发货', 'pending' => '待发货', 'failed' => '发货失败', default => '无需发货',
-                })
+                ->formatStateUsing(fn(?string $state): string => NotifyStatus::labels()[$state] ?? '无需发货')
                 ->label('发货'),
             Tables\Columns\TextColumn::make('notify_times')->label('重试'),
             Tables\Columns\TextColumn::make('paid_at')->dateTime()->label('支付时间'),
@@ -62,9 +64,9 @@ class PaymentOrderResource extends Resource
         ])->defaultSort('created_at', 'desc')
         ->filters([
             Tables\Filters\SelectFilter::make('status')
-                ->options(['pending' => '处理中', 'success' => '成功', 'failed' => '失败'])->label('状态'),
+                ->options(PaymentOrderStatus::labels())->label('状态'),
             Tables\Filters\SelectFilter::make('notify_status')
-                ->options(['pending' => '待发货', 'success' => '已发货', 'failed' => '发货失败'])->label('发货状态'),
+                ->options(NotifyStatus::labels())->label('发货状态'),
         ])->bulkActions([
             Tables\Actions\BulkAction::make('batch_retry')
                 ->label('批量重试发货')
@@ -74,13 +76,16 @@ class PaymentOrderResource extends Resource
                     $success = 0;
                     $fail = 0;
                     foreach ($records as $record) {
-                        if ($record->status === 'success' && $record->notify_status !== 'success') {
+                        if ($record->status === PaymentOrderStatus::SUCCESS && $record->notify_status !== NotifyStatus::SUCCESS) {
                             try {
-                                if (app(GamePayService::class)->notifyGameServer($record)) {
+                                $result = app(GamePayService::class)->notifyGameServer($record);
+                                if ($result) {
                                     $success++;
                                 } else {
                                     $fail++;
                                 }
+                                PaymentOperationLog::log($record->id, 'retry_notify', '批量重试', ['result' => $result ?? false]);
+                                AdminAuditLog::record('retry_notify', 'payment_order', (string)$record->id, null, null, '批量重试');
                             } catch (\Exception $e) {
                                 $fail++;
                             }
@@ -94,29 +99,24 @@ class PaymentOrderResource extends Resource
                 ->icon('heroicon-o-arrow-path')
                 ->color('warning')
                 ->visible(fn(PaymentOrder $record): bool =>
-                    $record->status === 'success' && $record->notify_status !== 'success'
+                    $record->status === PaymentOrderStatus::SUCCESS && $record->notify_status !== NotifyStatus::SUCCESS
                 )
                 ->action(function (PaymentOrder $record): void {
                     try {
                         $result = app(GamePayService::class)->notifyGameServer($record);
+                        PaymentOperationLog::log($record->id, 'retry_notify', '列表页重试', ['result' => $result]);
+                        AdminAuditLog::record('retry_notify', 'payment_order', (string)$record->id,
+                            ['notify_status' => $record->notify_status],
+                            ['notify_status' => $result ? NotifyStatus::SUCCESS : ($record->notify_times >= 3 ? NotifyStatus::FAILED : NotifyStatus::PENDING)],
+                            '列表页重试'
+                        );
                         if ($result) {
-                            Notification::make()
-                                ->success()
-                                ->title('发货成功')
-                                ->send();
+                            Notification::make()->success()->title('发货成功')->send();
                         } else {
-                            Notification::make()
-                                ->warning()
-                                ->title('发货失败')
-                                ->body('游戏方接口返回失败，请检查配置后重试')
-                                ->send();
+                            Notification::make()->warning()->title('发货失败')->body('请检查游戏方配置后重试')->send();
                         }
                     } catch (\Exception $e) {
-                        Notification::make()
-                            ->danger()
-                            ->title('发货异常')
-                            ->body($e->getMessage())
-                            ->send();
+                        Notification::make()->danger()->title('发货异常')->body($e->getMessage())->send();
                     }
                 }),
             Tables\Actions\ViewAction::make()->label('详情'),

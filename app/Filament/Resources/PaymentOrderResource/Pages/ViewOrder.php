@@ -2,9 +2,15 @@
 namespace App\Filament\Resources\PaymentOrderResource\Pages;
 
 use App\Filament\Resources\PaymentOrderResource;
-use App\Models\PaymentFlow;
+use App\Models\AdminAuditLog;
+use App\Models\PaymentOperationLog;
+use App\Enums\NotifyStatus;
+use App\Enums\PaymentFlowStatus;
+use App\Enums\PaymentOrderStatus;
 use App\Services\GamePayService;
+use App\Services\PaymentService;
 use Filament\Actions;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
@@ -23,7 +29,7 @@ class ViewOrder extends ViewRecord
         $actions = [];
 
         // 手动补单：将 pending/failed 的订单强制标记为成功
-        if (in_array($this->record->status, ['pending', 'failed'])) {
+        if (in_array($this->record->status, [PaymentOrderStatus::PENDING, PaymentOrderStatus::FAILED])) {
             $actions[] = Actions\Action::make('manual_top_up')
                 ->label('手动补单')
                 ->icon('heroicon-o-check-circle')
@@ -35,29 +41,92 @@ class ViewOrder extends ViewRecord
                         ->numeric()
                         ->default($this->record->amount)
                         ->required(),
+                    Textarea::make('remark')
+                        ->label('操作备注')
+                        ->placeholder('补单原因'),
                 ])
                 ->action(function (array $data): void {
+                    $oldAmount = $this->record->amount;
                     $this->record->update([
-                        'status' => 'success',
+                        'status' => PaymentOrderStatus::SUCCESS,
                         'paid_at' => now(),
                         'amount' => $data['paid_amount'],
                     ]);
+                    PaymentOperationLog::log($this->record->id, 'top_up',
+                        $data['remark'] ?? null,
+                        ['old_amount' => $oldAmount, 'new_amount' => $data['paid_amount']]
+                    );
+                    AdminAuditLog::record('top_up', 'payment_order', (string)$this->record->id,
+                        ['status' => PaymentOrderStatus::PENDING, 'amount' => $oldAmount],
+                        ['status' => PaymentOrderStatus::SUCCESS, 'amount' => $data['paid_amount']],
+                        $data['remark'] ?? null
+                    );
                     Notification::make()->success()->title('补单成功')->send();
                 });
         }
 
         // 重试发货
-        if ($this->record->status === 'success' && $this->record->notify_status !== 'success') {
+        if ($this->record->status === PaymentOrderStatus::SUCCESS && $this->record->notify_status !== NotifyStatus::SUCCESS) {
             $actions[] = Actions\Action::make('retry_notify_detail')
                 ->label('重试发货')
                 ->icon('heroicon-o-arrow-path')
                 ->color('warning')
-                ->action(function (): void {
+                ->form([
+                    Textarea::make('remark')
+                        ->label('操作备注'),
+                ])
+                ->action(function (array $data): void {
                     $result = app(GamePayService::class)->notifyGameServer($this->record);
+                    PaymentOperationLog::log($this->record->id, 'retry_notify',
+                        $data['remark'] ?? null,
+                        ['result' => $result]
+                    );
+                    AdminAuditLog::record('retry_notify', 'payment_order', (string)$this->record->id,
+                        ['notify_status' => $this->record->notify_status],
+                        ['notify_status' => $result ? NotifyStatus::SUCCESS : ($this->record->notify_times >= 3 ? NotifyStatus::FAILED : NotifyStatus::PENDING)],
+                        $data['remark'] ?? null
+                    );
                     if ($result) {
                         Notification::make()->success()->title('发货成功')->send();
                     } else {
                         Notification::make()->warning()->title('发货失败')->body('请检查游戏方配置')->send();
+                    }
+                    $this->refresh();
+                });
+        }
+
+        // 退款（仅成功订单可退）
+        if ($this->record->status === PaymentOrderStatus::SUCCESS) {
+            $actions[] = Actions\Action::make('refund')
+                ->label('退款')
+                ->icon('heroicon-o-arrow-uturn-left')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->form([
+                    Textarea::make('remark')
+                        ->label('退款原因')
+                        ->required(),
+                ])
+                ->action(function (array $data): void {
+                    $result = app(PaymentService::class)->refund($this->record);
+                    if ($result['code'] === 0) {
+                        PaymentOperationLog::log($this->record->id, 'refund',
+                            $data['remark'] ?? null,
+                            ['refund_result' => $result]
+                        );
+                        AdminAuditLog::record('refund', 'payment_order', (string)$this->record->id,
+                            ['status' => PaymentOrderStatus::SUCCESS, 'amount' => $this->record->amount],
+                            ['status' => PaymentOrderStatus::CLOSED, 'amount' => $this->record->amount],
+                            $data['remark'] ?? null
+                        );
+                        Notification::make()->success()->title($result['msg'])->send();
+                    } else {
+                        AdminAuditLog::record('refund', 'payment_order', (string)$this->record->id,
+                            ['status' => PaymentOrderStatus::SUCCESS, 'amount' => $this->record->amount],
+                            ['status' => $this->record->status, 'amount' => $this->record->amount],
+                            '退款失败: ' . ($data['remark'] ?? '') . ' | ' . $result['msg']
+                        );
+                        Notification::make()->danger()->title('退款失败')->body($result['msg'])->send();
                     }
                     $this->refresh();
                 });
@@ -82,11 +151,9 @@ class ViewOrder extends ViewRecord
                             ->label('状态')
                             ->badge()
                             ->color(fn(string $state): string => match ($state) {
-                                'success' => 'success', 'pending' => 'warning', 'failed' => 'danger', default => 'gray',
+                                PaymentOrderStatus::SUCCESS => 'success', PaymentOrderStatus::PENDING => 'warning', PaymentOrderStatus::FAILED => 'danger', default => 'gray',
                             })
-                            ->formatStateUsing(fn(string $state): string => match ($state) {
-                                'success' => '成功', 'pending' => '处理中', 'failed' => '失败', default => $state,
-                            }),
+                            ->formatStateUsing(fn(string $state): string => PaymentOrderStatus::labels()[$state] ?? $state),
                         \Filament\Infolists\Components\TextEntry::make('paid_at')->label('支付时间')->dateTime(),
                         \Filament\Infolists\Components\TextEntry::make('created_at')->label('创建时间')->dateTime(),
                     ])->columns(2),
@@ -111,11 +178,9 @@ class ViewOrder extends ViewRecord
                             ->label('发货状态')
                             ->badge()
                             ->color(fn(?string $state): string => match ($state) {
-                                'success' => 'success', 'pending' => 'warning', 'failed' => 'danger', default => 'gray',
+                                NotifyStatus::SUCCESS => 'success', NotifyStatus::PENDING => 'warning', NotifyStatus::FAILED => 'danger', default => 'gray',
                             })
-                            ->formatStateUsing(fn(?string $state): string => match ($state) {
-                                'success' => '已发货', 'pending' => '待发货', 'failed' => '发货失败', default => '无需发货',
-                            }),
+                            ->formatStateUsing(fn(?string $state): string => NotifyStatus::labels()[$state] ?? '无需发货'),
                         \Filament\Infolists\Components\TextEntry::make('notify_times')->label('重试次数'),
                         \Filament\Infolists\Components\TextEntry::make('last_notify_at')->label('最后重试时间')->dateTime(),
                     ])->columns(3),
@@ -134,7 +199,12 @@ class ViewOrder extends ViewRecord
                                 \Filament\Infolists\Components\TextEntry::make('status')
                                     ->label('状态')
                                     ->badge()
-                                    ->color(fn(?string $state): string => $state === 'success' ? 'success' : 'gray'),
+                                    ->color(fn(?string $state): string => match ($state) {
+                                        PaymentFlowStatus::SUCCESS => 'success', PaymentFlowStatus::REFUND => 'danger', default => 'gray',
+                                    })
+                                    ->formatStateUsing(fn(?string $state): string => match ($state) {
+                                        PaymentFlowStatus::SUCCESS => '支付成功', PaymentFlowStatus::REFUND => '已退款', PaymentFlowStatus::PENDING => '处理中', default => $state ?? '',
+                                    }),
                                 \Filament\Infolists\Components\TextEntry::make('created_at')->label('时间')->dateTime(),
                             ])->columns(4),
                     ])->visible(fn() => $record->flows()->count() > 0),
@@ -171,6 +241,27 @@ class ViewOrder extends ViewRecord
                             ])->columns(4)
                             ->defaultSort('created_at', 'desc'),
                     ])->visible(fn(\App\Models\PaymentOrder $record): bool => $record->gameNotifyLogs()->count() > 0),
+
+                // === 操作日志 ===
+                \Filament\Infolists\Components\Section::make('操作日志')
+                    ->schema([
+                        \Filament\Infolists\Components\RepeatableEntry::make('operationLogs')
+                            ->schema([
+                                \Filament\Infolists\Components\TextEntry::make('created_at')->label('时间')->dateTime(),
+                                \Filament\Infolists\Components\TextEntry::make('action')
+                                    ->label('操作')
+                                    ->badge()
+                                    ->color(fn(string $state): string => match ($state) {
+                                        'top_up' => 'success', 'refund' => 'danger', 'retry_notify' => 'warning', default => 'gray',
+                                    })
+                                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                                        'top_up' => '手动补单', 'refund' => '退款', 'retry_notify' => '重试发货', default => $state,
+                                    }),
+                                \Filament\Infolists\Components\TextEntry::make('operator')->label('操作人'),
+                                \Filament\Infolists\Components\TextEntry::make('remark')->label('备注'),
+                            ])->columns(4)
+                            ->defaultSort('created_at', 'desc'),
+                    ])->visible(fn(\App\Models\PaymentOrder $record): bool => $record->operationLogs()->count() > 0),
             ]);
     }
 }

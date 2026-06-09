@@ -3,21 +3,27 @@ import { Link } from '@inertiajs/vue3'
 </script>
 
 <template>
-  <footer class="bg-gray-900 text-gray-400 py-8 mt-auto">
-    <div class="max-w-7xl mx-auto px-4 text-center text-sm">
-      <div class="mb-4">
-        <Link href="/about" class="hover:text-white mx-2">关于我们</Link>
-        <span>|</span>
-        <Link href="/agreement" class="hover:text-white mx-2">用户协议</Link>
-        <span>|</span>
-        <Link href="/parent" class="hover:text-white mx-2">家长监护</Link>
+  <footer class="bg-white text-gray-500 py-6 mt-8 border-t border-gray-200">
+    <div class="w-[1200px] mx-auto text-center">
+      <div class="flex items-center justify-center gap-2 mb-2">
+        <div class="w-7 h-7 bg-gradient-to-br from-[#ff7a00] to-[#ff4a1f] rounded flex items-center justify-center text-[13px] font-bold text-white">
+          602
+        </div>
+        <span class="text-[15px] font-bold text-gray-700">游戏平台</span>
       </div>
-      <p>上海钰讯信息科技有限公司 Copyright @ 2012-2026 602.com All Rights Reserved</p>
-      <p class="mt-1">
-        <a href="https://beian.miit.gov.cn" target="_blank" class="hover:text-white">沪ICP备14029528号-2</a>
-        <span class="mx-2">|</span>
-        <a href="http://www.beian.gov.cn" target="_blank" class="hover:text-white">沪公网安备 31011402001552号</a>
+      <p class="text-[12px] mb-1.5 text-gray-500">
+        602 游戏平台 © {{ new Date().getFullYear() }} 版权所有 | 抵制不良游戏 拒绝盗版游戏
       </p>
+      <p class="text-[11px] text-gray-400 leading-relaxed">
+        注意自我保护 谨防受骗上当 适度游戏益脑 沉迷游戏伤身 合理安排时间 享受健康生活
+      </p>
+      <div class="mt-3 text-[11px] text-gray-400">
+        <Link href="/about" class="hover:text-[#ff7a00] mx-2">关于我们</Link>
+        <span>|</span>
+        <Link href="/agreement" class="hover:text-[#ff7a00] mx-2">用户协议</Link>
+        <span>|</span>
+        <Link href="/parent" class="hover:text-[#ff7a00] mx-2">家长监护</Link>
+      </div>
     </div>
   </footer>
 </template>

@@ -1,6 +1,7 @@
 <script setup>
 import { Link } from '@inertiajs/vue3'
 import Default from '@/Layouts/Default.vue'
+import { PaymentOrderStatus } from '@/statusMaps'
 
 defineProps({
   user: Object,
@@ -22,11 +23,11 @@ defineProps({
               <p v-if="user.id_card_verified_at" class="text-green-600 text-sm mt-1">已实名认证</p>
             </div>
             <nav class="space-y-2">
-              <Link :href="route('user.dashboard')"
+              <Link :href="'/user'"
                 class="block px-4 py-2 rounded hover:bg-gray-100 text-gray-700">个人主页</Link>
-              <Link :href="route('user.settings')"
+              <Link :href="'/user/settings'"
                 class="block px-4 py-2 rounded hover:bg-gray-100 text-gray-700">账户设置</Link>
-              <Link :href="route('user.orders')"
+              <Link :href="'/user/orders'"
                 class="block px-4 py-2 rounded hover:bg-gray-100 text-gray-700">充值记录</Link>
             </nav>
           </div>
@@ -39,14 +40,14 @@ defineProps({
                 class="flex justify-between items-center py-2 border-b text-sm">
                 <span class="text-gray-600">{{ order.created_at }}</span>
                 <span class="font-medium">¥{{ order.amount }}</span>
-                <span :class="order.status === 'success' ? 'text-green-600' : 'text-yellow-600'">
-                  {{ { pending: '处理中', success: '成功', failed: '失败' }[order.status] || order.status }}
+                <span :class="'text-' + PaymentOrderStatus.color(order.status) + '-600'">
+                  {{ PaymentOrderStatus.label(order.status) }}
                 </span>
               </div>
             </div>
             <p v-else class="text-gray-500 text-sm py-4">暂无充值记录</p>
             <div class="mt-4">
-              <Link :href="route('user.orders')" class="text-orange-600 text-sm hover:underline">查看全部记录 →</Link>
+              <Link :href="'/user/orders'" class="text-orange-600 text-sm hover:underline">查看全部记录 →</Link>
             </div>
           </div>
         </div>

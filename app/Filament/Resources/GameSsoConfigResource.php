@@ -1,6 +1,7 @@
 <?php
 namespace App\Filament\Resources;
 
+use App\Enums\PaymentOrderStatus;
 use App\Filament\Resources\GameSsoConfigResource\Pages;
 use App\Models\GameSsoConfig;
 use Filament\Forms;
@@ -30,8 +31,8 @@ class GameSsoConfigResource extends Resource
                 ->label('平台ID(游戏方提供)'),
             Forms\Components\TextInput::make('login_url')
                 ->required()
-                ->url()
-                ->label('游戏登录接口地址'),
+                ->label('游戏登录接口地址')
+                ->placeholder('http://game-dev.com/login.php'),
             Forms\Components\TextInput::make('login_key')
                 ->required()
                 ->password()
@@ -45,11 +46,8 @@ class GameSsoConfigResource extends Resource
                 ->default(fn() => bin2hex(random_bytes(16)))
                 ->label('支付密钥 payKey'),
             Forms\Components\TextInput::make('pay_notify_url')
-                ->url()
-                ->label('支付回调通知地址(游戏方发货接口)'),
-            Forms\Components\TextInput::make('server_open_url')
-                ->url()
-                ->label('开服通知地址'),
+                ->label('支付回调通知地址(游戏方发货接口)')
+                ->placeholder('http://game-dev.com/notify.php'),
             Forms\Components\Toggle::make('enabled')
                 ->default(true)
                 ->label('启用'),
@@ -71,6 +69,12 @@ class GameSsoConfigResource extends Resource
                 ->color('gray')
                 ->url(fn(\App\Models\GameSsoConfig $record): string => $record->login_url)
                 ->openUrlInNewTab(),
+            Tables\Actions\Action::make('start_game')
+                ->label('开始游戏')
+                ->icon('heroicon-o-play')
+                ->color('success')
+                ->url(fn(\App\Models\GameSsoConfig $record): string => route('games.show', $record->game_id))
+                ->openUrlInNewTab(),
             Tables\Actions\Action::make('test_notify')
                 ->label('测试发货')
                 ->icon('heroicon-o-bolt')
@@ -78,7 +82,7 @@ class GameSsoConfigResource extends Resource
                 ->action(function (\App\Models\GameSsoConfig $record): void {
                     try {
                         $order = \App\Models\PaymentOrder::where('game_id', $record->game_id)
-                            ->where('status', 'success')
+                            ->where('status', PaymentOrderStatus::SUCCESS)
                             ->latest()
                             ->first();
                         if (!$order) {

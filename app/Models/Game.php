@@ -1,12 +1,14 @@
 <?php
 namespace App\Models;
 
+use App\Enums\GameStatus;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Game extends Model
 {
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'category_id', 'name', 'short_name', 'logo', 'banner',
@@ -43,8 +45,13 @@ class Game extends Model
         return $this->hasMany(GameEntry::class);
     }
 
+    public function ssoConfig(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(GameSsoConfig::class, 'game_id');
+    }
+
     public function scopeActive($query)
     {
-        return $query->where('status', 1);
+        return $query->where('status', GameStatus::ACTIVE);
     }
 }

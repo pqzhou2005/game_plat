@@ -23,8 +23,8 @@ class GameResource extends Resource
                 ->relationship('category', 'name')->required()->label('分类'),
             Forms\Components\TextInput::make('name')->required()->label('游戏名'),
             Forms\Components\TextInput::make('short_name')->label('简称'),
-            Forms\Components\TextInput::make('logo')->url()->label('LOGO链接'),
-            Forms\Components\TextInput::make('banner')->url()->label('Banner链接'),
+            Forms\Components\TextInput::make('logo')->label('LOGO链接')->placeholder('https://example.com/logo.png'),
+            Forms\Components\TextInput::make('banner')->label('Banner链接')->placeholder('https://example.com/banner.png'),
             Forms\Components\Select::make('game_type')
                 ->options(['页游' => '页游', '微端' => '微端', '手游' => '手游'])->label('游戏类型'),
             Forms\Components\TagsInput::make('tags')->label('标签'),

@@ -1,10 +1,12 @@
 <?php
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class PaymentOrder extends Model
 {
+    use HasFactory;
     protected $fillable = [
         'order_no', 'user_id', 'game_id', 'server_id',
         'game_account', 'amount', 'status', 'paid_at',
@@ -35,11 +37,16 @@ class PaymentOrder extends Model
 
     public function flows(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
-        return $this->hasMany(PaymentFlow::class);
+        return $this->hasMany(PaymentFlow::class, 'order_id');
     }
 
     public function gameNotifyLogs(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(GameNotifyLog::class, 'payment_order_id');
+    }
+
+    public function operationLogs(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(PaymentOperationLog::class, 'payment_order_id');
     }
 }

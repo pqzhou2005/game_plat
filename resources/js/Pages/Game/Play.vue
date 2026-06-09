@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { usePage, router } from '@inertiajs/vue3'
 import PayModal from '@/Components/PayModal.vue'
 
@@ -9,6 +9,7 @@ const props = defineProps({
   loginUrl: String,
   hasConfig: Boolean,
   error: String,
+  ssoToken: Object,
 })
 
 const page = usePage()
@@ -18,6 +19,17 @@ const showPayModal = ref(false)
 const payData = ref(null)
 const loading = ref(true)
 const loadError = ref(props.error || null)
+
+const getAllowedGameOrigin = () => {
+  const url = props.ssoToken?.login_url || props.loginUrl
+  if (!url) return null
+
+  try {
+    return new URL(url).origin
+  } catch {
+    return null
+  }
+}
 
 const backToGame = () => {
   router.visit(`/games/${props.game.id}`)
@@ -34,33 +46,25 @@ onMounted(() => {
     return
   }
 
-  const serverId = props.server?.id
-  if (!serverId) {
-    loadError.value = '请选择服务器'
+  const params = props.ssoToken
+  if (!params) {
+    loadError.value = 'SSO参数获取失败'
     loading.value = false
     return
   }
 
-  fetch(`/api/sso/token?game_id=${props.game.id}&server_id=${serverId}`)
-    .then(res => {
-      if (!res.ok) throw new Error('SSO token获取失败')
-      return res.json()
-    })
-    .then(params => {
-      const loginUrl = params.login_url
-      delete params.login_url
-      const query = new URLSearchParams(params).toString()
-      const sep = loginUrl.includes('?') ? '&' : '?'
-      if (iframeRef.value) {
-        iframeRef.value.src = loginUrl + sep + query
-      }
-      loading.value = false
-    })
-    .catch(err => {
-      console.error('SSO failed:', err)
-      loadError.value = '登录验证失败，请重试'
-      loading.value = false
-    })
+  const loginUrl = params.login_url
+  delete params.login_url
+  const query = new URLSearchParams(params).toString()
+  const sep = loginUrl.includes('?') ? '&' : '?'
+
+  // 先隐藏 loading，等 iframe 渲染出来后设置 src
+  loading.value = false
+  nextTick(() => {
+    if (iframeRef.value) {
+      iframeRef.value.src = loginUrl + sep + query
+    }
+  })
 
   window.addEventListener('message', handleGameMessage)
 })
@@ -70,7 +74,16 @@ onUnmounted(() => {
 })
 
 const handleGameMessage = (event) => {
+  console.log('[Play] postMessage received:', { origin: event.origin, data: event.data })
+
+  const allowedOrigin = getAllowedGameOrigin()
+  if (allowedOrigin && event.origin !== allowedOrigin && event.origin !== 'null') {
+    console.warn('[Play] message ignored: origin mismatch', { expected: allowedOrigin, actual: event.origin })
+    return
+  }
+
   const { type, data } = event.data || {}
+  console.log('[Play] message type:', type, 'data:', data)
 
   if (type === 'pay') {
     payData.value = data
@@ -78,21 +91,43 @@ const handleGameMessage = (event) => {
   }
 
   if (type === 'role') {
+    console.log('[Play] role上报:', data)
     fetch('/api/game/role', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(data),
     })
+      .then(res => {
+        console.log('[Play] role上报响应 status:', res.status)
+        return res.text().then(t => ({ status: res.status, body: t }))
+      })
+      .then(({ status, body }) => {
+        console.log('[Play] role上报结果:', { status, body })
+      })
+      .catch(err => {
+        console.error('[Play] role上报失败:', err)
+      })
   }
 
   if (type === 'batch_role') {
+    console.log('[Play] batch_role上报:', data)
     fetch('/api/game/roles', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(data),
     })
+      .then(res => {
+        console.log('[Play] batch_role上报响应 status:', res.status)
+        return res.text().then(t => ({ status: res.status, body: t }))
+      })
+      .then(({ status, body }) => {
+        console.log('[Play] batch_role上报结果:', { status, body })
+      })
+      .catch(err => {
+        console.error('[Play] batch_role上报失败:', err)
+      })
   }
 }
 
@@ -164,7 +199,7 @@ const handlePaySuccess = (order) => {
     <iframe v-else ref="iframeRef"
       class="flex-1 w-full border-0"
       allowfullscreen
-      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation">
+      sandbox="allow-scripts allow-forms allow-popups allow-same-origin">
     </iframe>
 
     <!-- Pay Modal -->

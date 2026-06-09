@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\PaymentOrder;
+use App\Services\RealNameService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -30,7 +31,7 @@ class UserController extends Controller
         ]);
     }
 
-    public function updateSettings(Request $request)
+    public function updateSettings(Request $request, RealNameService $realNameService)
     {
         $user = Auth::user();
 
@@ -47,6 +48,26 @@ class UserController extends Controller
 
         $user->update($validated);
 
+        // 实名认证（如果提交了姓名和身份证）
+        if (!$user->isRealNameVerified() && $request->filled('real_name') && $request->filled('id_card')) {
+            $result = $realNameService->verify(
+                $request->real_name,
+                $request->id_card,
+                $user->id
+            );
+
+            if ($result['code'] === 0) {
+                $user->update([
+                    'real_name' => $request->real_name,
+                    'id_card' => strtoupper($request->id_card),
+                    'id_card_verified_at' => now(),
+                ]);
+                return back()->with('success', '实名认证成功');
+            } else {
+                return back()->with('error', $result['msg'] ?? '实名认证失败');
+            }
+        }
+
         return back()->with('success', '设置已更新');
     }
 
@@ -59,5 +80,44 @@ class UserController extends Controller
         return Inertia::render('User/Orders', [
             'orders' => $orders,
         ]);
+    }
+
+    public function verifyForm(Request $request)
+    {
+        return Inertia::render('Auth/VerifyRealName', [
+            'user' => Auth::user(),
+            'redirect' => $request->query('redirect'),
+        ]);
+    }
+
+    public function verifyRealName(Request $request, RealNameService $realNameService)
+    {
+        $user = Auth::user();
+
+        if ($user->isRealNameVerified()) {
+            return back();
+        }
+
+        $validated = $request->validate([
+            'real_name' => 'required|string|max:255',
+            'id_card' => 'required|string|max:18',
+        ]);
+
+        $result = $realNameService->verify(
+            $validated['real_name'],
+            $validated['id_card'],
+            $user->id
+        );
+
+        if ($result['code'] === 0) {
+            $user->update([
+                'real_name' => $validated['real_name'],
+                'id_card' => strtoupper($validated['id_card']),
+                'id_card_verified_at' => now(),
+            ]);
+            return back()->with('success', '实名认证成功');
+        }
+
+        return back()->with('error', $result['msg'] ?? '实名认证失败');
     }
 }

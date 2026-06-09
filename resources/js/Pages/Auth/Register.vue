@@ -12,7 +12,7 @@ const form = useForm({
 })
 
 const submit = () => {
-  form.post(route('register.store'))
+  form.post('/register')
 }
 </script>
 
@@ -23,8 +23,8 @@ const submit = () => {
         <h2 class="text-2xl font-bold text-center text-gray-900 mb-8">注册 602 账号</h2>
 
         <form @submit.prevent="submit" class="space-y-4">
-          <div v-if="form.errors.username" class="bg-red-50 text-red-600 text-sm p-3 rounded">
-            {{ form.errors.username }}
+          <div v-if="Object.keys(form.errors).length" class="bg-red-50 text-red-600 text-sm p-3 rounded">
+            <div v-for="(err, key) in form.errors" :key="key">{{ err }}</div>
           </div>
 
           <div>
@@ -49,7 +49,7 @@ const submit = () => {
           </div>
 
           <div class="border-t pt-4 mt-4">
-            <p class="text-xs text-gray-500 mb-3">实名信息（用于防沉迷系统）</p>
+            <p class="text-xs text-gray-500 mb-3">实名信息（防沉迷认证，进入游戏必需）</p>
             <div class="mb-3">
               <label class="block text-sm font-medium text-gray-700 mb-1">手机号</label>
               <input v-model="form.mobile" type="tel"
@@ -58,16 +58,16 @@ const submit = () => {
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">真实姓名</label>
-                <input v-model="form.real_name" type="text"
+                <label class="block text-sm font-medium text-gray-700 mb-1">真实姓名 *</label>
+                <input v-model="form.real_name" type="text" required
                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                  placeholder="选填" />
+                  placeholder="请输入真实姓名" />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">身份证号</label>
-                <input v-model="form.id_card" type="text"
+                <label class="block text-sm font-medium text-gray-700 mb-1">身份证号 *</label>
+                <input v-model="form.id_card" type="text" required
                   class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                  placeholder="选填" />
+                  placeholder="请输入身份证号" />
               </div>
             </div>
           </div>
@@ -79,7 +79,7 @@ const submit = () => {
 
           <p class="text-center text-sm text-gray-600">
             已有账号？
-            <Link :href="route('login')" class="text-orange-600 hover:underline font-medium">立即登录</Link>
+            <Link href="/login" class="text-orange-600 hover:underline font-medium">立即登录</Link>
           </p>
         </form>
       </div>

@@ -65,6 +65,7 @@ class PaymentConfigResource extends Resource
     {
         return [
             'index' => Pages\ListPaymentConfigs::route('/'),
+            'create' => Pages\CreatePaymentConfig::route('/create'),
             'edit' => Pages\EditPaymentConfig::route('/{record}/edit'),
         ];
     }

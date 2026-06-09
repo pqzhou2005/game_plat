@@ -19,4 +19,9 @@ class RoleReport extends Model
             'raw_data' => 'array',
         ];
     }
+
+    public function game(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Game::class);
+    }
 }

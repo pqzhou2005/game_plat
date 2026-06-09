@@ -10,10 +10,7 @@ class SsoService
     {
         $config = GameSsoConfig::where('game_id', $gameId)->where('enabled', true)->firstOrFail();
 
-        $isAdult = 0;
-        if ($user->isRealNameVerified()) {
-            $isAdult = 1;
-        }
+        $isAdult = $user->getAntiAddictionStatus(); // 0=未实名 1=已成年 2=未成年
 
         $params = [
             'uid'       => $user->id,

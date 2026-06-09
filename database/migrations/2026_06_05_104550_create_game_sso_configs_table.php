@@ -16,7 +16,6 @@ return new class extends Migration
             $table->string('login_url', 500)->comment('游戏研发方提供的登录接口地址');
             $table->string('pay_key', 255)->comment('支付密钥 payKey(平台生成,分发给游戏方)');
             $table->string('pay_notify_url', 500)->nullable()->comment('支付回调通知游戏方发货地址');
-            $table->string('server_open_url', 500)->nullable()->comment('开服通知游戏方地址');
             $table->tinyInteger('enabled')->default(1);
             $table->timestamps();
         });

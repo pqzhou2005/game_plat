@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Enums\PaymentOrderStatus;
 use App\Models\PaymentOrder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -11,7 +12,7 @@ class PayAggregateController extends Controller
     {
         $order = PaymentOrder::where('order_no', $orderNo)->firstOrFail();
 
-        if ($order->status === 'success') {
+        if ($order->status === PaymentOrderStatus::SUCCESS) {
             return response('订单已支付', 200);
         }
 

@@ -1,14 +1,16 @@
 <script setup>
 import { ref } from 'vue'
-import { Link, usePage } from '@inertiajs/vue3'
+import { Link, usePage, router } from '@inertiajs/vue3'
 import Default from '@/Layouts/Default.vue'
 import GameCard from '@/Components/GameCard.vue'
 import ServerSelectModal from '@/Components/ServerSelectModal.vue'
+import { GameServerStatus, NoticeType } from '@/statusMaps'
 
 const props = defineProps({
   game: Object,
   recommended: Array,
   recentServerIds: Array,
+  notices: Array,
 })
 
 const page = usePage()
@@ -22,11 +24,8 @@ const handleStartGame = () => {
     router.visit('/login')
     return
   }
-  if (props.game.servers?.length) {
-    showServerSelect.value = true
-  } else {
-    router.visit(`/game/play/${props.game.id}`)
-  }
+  // 直接进入游戏，后端自动选择服务器
+  router.visit(`/game/play/${props.game.id}`)
 }
 </script>
 
@@ -88,16 +87,12 @@ const handleStartGame = () => {
                 <td class="py-3 px-4 font-medium">{{ server.name }}</td>
                 <td class="py-3 px-4 text-sm text-gray-600">{{ formatDate(server.open_time) }}</td>
                 <td class="py-3 px-4">
-                  <span :class="{
-                    'text-green-600': server.status === 1,
-                    'text-orange-600': server.status === 2,
-                    'text-gray-400': server.status >= 3
-                  }" class="text-sm">
-                    {{ { 1: '火爆', 2: '推荐', 3: '维护', 4: '已满' }[server.status] || '未知' }}
+                  <span :class="['text-sm inline-flex items-center px-2 py-0.5 rounded text-xs font-medium', GameServerStatus.badgeClass(server.status)]">
+                    {{ GameServerStatus.label(server.status) }}
                   </span>
                 </td>
                 <td class="py-3 px-4">
-                  <a :href="game.entries?.[0]?.entry_url || '#'" target="_blank"
+                  <a :href="`/game/play/${game.id}?server_id=${server.id}`"
                     class="bg-orange-500 text-white text-sm px-4 py-1.5 rounded hover:bg-orange-600 transition">
                     开始游戏
                   </a>
@@ -108,6 +103,19 @@ const handleStartGame = () => {
         </div>
         <div v-else class="text-center py-8 text-gray-500">
           暂无区服信息
+        </div>
+      </div>
+
+      <!-- 公告 -->
+      <div v-if="notices?.length" class="bg-white rounded-xl shadow-lg p-6 mb-8">
+        <h2 class="text-xl font-bold text-gray-900 mb-4">游戏公告</h2>
+        <div class="space-y-2">
+          <a v-for="notice in notices" :key="notice.id" :href="`/notices/${notice.id}`"
+            class="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-gray-50 transition border border-gray-100">
+            <span class="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded shrink-0">{{ NoticeType.label(notice.type) }}</span>
+            <span class="text-sm font-medium text-gray-900 truncate flex-1">{{ notice.title }}</span>
+            <span class="text-xs text-gray-400 shrink-0">{{ notice.published_at }}</span>
+          </a>
         </div>
       </div>
 
