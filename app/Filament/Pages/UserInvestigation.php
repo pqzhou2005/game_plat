@@ -224,18 +224,18 @@ class UserInvestigation extends Page
 
     protected function loadRoleReports(int $userId): void
     {
-        // 按 game_id + server_id + role_id 分组聚合，取每组 MAX(created_at) 的最新记录
-        // 使用子查询 MAX(id) 实现
-        $latestIds = DB::table('role_reports')
-            ->select(DB::raw('MAX(id) as id'))
-            ->where('user_id', $userId)
-            ->groupBy('game_id', 'server_id', 'role_id')
-            ->pluck('id');
-
-        $reports = RoleReport::whereIn('id', $latestIds)
+        // 按 game_id + server_id + role_id 分组聚合，取每组最新记录
+        // 先按 created_at DESC + id DESC 排序，再用 collection unique 去重
+        // 这样每组保留的是最新上报的那条，且不受 MAX(id) 与时间不一致的影响
+        $reports = RoleReport::where('user_id', $userId)
             ->with('game')
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->orderBy('id', 'desc')
+            ->get()
+            ->unique(function ($item) {
+                return $item->game_id . '-' . $item->server_id . '-' . $item->role_id;
+            })
+            ->values();
 
         $this->roleReports = $reports->map(function ($report) {
             return [
@@ -268,7 +268,7 @@ class UserInvestigation extends Page
             return [
                 'order_no' => $order->order_no,
                 'detail_url' => PaymentOrderResource::getUrl('view', ['record' => $order]),
-                'reconciliation_url' => '/admin/order-reconciliation',
+                'reconciliation_url' => '/admin/order-reconciliation?tableSearch=' . urlencode($order->order_no),
                 'game_name' => $order->game?->name ?? '-',
                 'server_id' => $order->server_id ?? '-',
                 'role_name' => $order->role_name ?? '-',
@@ -305,7 +305,7 @@ class UserInvestigation extends Page
             return [
                 'order_no' => $order->order_no,
                 'detail_url' => PaymentOrderResource::getUrl('view', ['record' => $order]),
-                'reconciliation_url' => '/admin/order-reconciliation',
+                'reconciliation_url' => '/admin/order-reconciliation?tableSearch=' . urlencode($order->order_no),
                 'amount' => number_format((float) $order->amount, 2),
                 'error_message' => $lastLog?->error_message ?? '未知错误',
                 'response_body' => $lastLog?->response_body ?? '-',
