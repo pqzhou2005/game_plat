@@ -16,6 +16,7 @@ class UserAttribution extends Model
         'promote_id',
         'promote_code',
         'attribution_type',
+        'created_at',
     ];
 
     protected function casts(): array
