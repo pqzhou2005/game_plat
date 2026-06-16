@@ -33,6 +33,9 @@ class PromotePerformance extends Page
     // 口径说明
     public string $cohortDescription = '统计口径：按注册归因时间筛选，展示该批注册用户截至当前的后续创角与付费表现。';
 
+    // 汇总统计
+    public array $totals = [];
+
     public function mount(): void
     {
         $this->startDate = now()->subDays(29)->format('Y-m-d');
@@ -184,6 +187,26 @@ class PromotePerformance extends Page
         })->toArray();
 
         $this->sortReportData();
+
+        // 计算汇总
+        $totals = [
+            'register_count' => collect($this->reportData)->sum('register_count'),
+            'role_user_count' => collect($this->reportData)->sum('role_user_count'),
+            'role_count' => collect($this->reportData)->sum('role_count'),
+            'pay_user_count' => collect($this->reportData)->sum('pay_user_count'),
+            'order_count' => collect($this->reportData)->sum('order_count'),
+            'revenue' => collect($this->reportData)->sum('revenue'),
+        ];
+        $totals['register_to_role_rate'] = $totals['register_count'] > 0
+            ? round($totals['role_user_count'] / $totals['register_count'] * 100, 2) . '%'
+            : '-';
+        $totals['register_to_pay_rate'] = $totals['register_count'] > 0
+            ? round($totals['pay_user_count'] / $totals['register_count'] * 100, 2) . '%'
+            : '-';
+        $totals['arppu'] = $totals['pay_user_count'] > 0
+            ? round($totals['revenue'] / $totals['pay_user_count'], 2)
+            : '-';
+        $this->totals = $totals;
     }
 
     protected function sortReportData(): void

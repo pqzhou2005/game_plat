@@ -37,23 +37,6 @@
         </div>
 
         {{-- 汇总统计 --}}
-        @php
-            $totalRegister = collect($reportData)->sum('register_count');
-            $totalRoleUser = collect($reportData)->sum('role_user_count');
-            $totalRole = collect($reportData)->sum('role_count');
-            $totalPayUser = collect($reportData)->sum('pay_user_count');
-            $totalOrder = collect($reportData)->sum('order_count');
-            $totalRevenue = collect($reportData)->sum('revenue');
-            $totalRoleRate = $totalRegister > 0
-                ? round($totalRoleUser / $totalRegister * 100, 2) . '%'
-                : '-';
-            $totalPayRate = $totalRegister > 0
-                ? round($totalPayUser / $totalRegister * 100, 2) . '%'
-                : '-';
-            $totalArppu = $totalPayUser > 0
-                ? round($totalRevenue / $totalPayUser, 2)
-                : '-';
-        @endphp
 
         <x-filament::section>
             <x-slot name="heading">
@@ -127,15 +110,15 @@
                                 <td class="py-2 px-3 text-gray-700">合计</td>
                                 <td class="py-2 px-3"></td>
                                 <td class="py-2 px-3"></td>
-                                <td class="py-2 px-3 text-right text-gray-800 tabular-nums">{{ number_format($totalRegister) }}</td>
-                                <td class="py-2 px-3 text-right text-gray-800 tabular-nums">{{ number_format($totalRoleUser) }}</td>
-                                <td class="py-2 px-3 text-right text-gray-800 tabular-nums">{{ number_format($totalRole) }}</td>
-                                <td class="py-2 px-3 text-right text-gray-800 tabular-nums">{{ number_format($totalPayUser) }}</td>
-                                <td class="py-2 px-3 text-right text-gray-800 tabular-nums">{{ number_format($totalOrder) }}</td>
-                                <td class="py-2 px-3 text-right text-gray-800 tabular-nums">{{ number_format($totalRevenue, 2) }}</td>
-                                <td class="py-2 px-3 text-right text-gray-800 tabular-nums">{{ $totalRoleRate }}</td>
-                                <td class="py-2 px-3 text-right text-gray-800 tabular-nums">{{ $totalPayRate }}</td>
-                                <td class="py-2 px-3 text-right text-gray-800 tabular-nums">{{ $totalArppu === '-' ? '-' : number_format((float) $totalArppu, 2) }}</td>
+                                <td class="py-2 px-3 text-right text-gray-800 tabular-nums">{{ number_format($totals['register_count']) }}</td>
+                                <td class="py-2 px-3 text-right text-gray-800 tabular-nums">{{ number_format($totals['role_user_count']) }}</td>
+                                <td class="py-2 px-3 text-right text-gray-800 tabular-nums">{{ number_format($totals['role_count']) }}</td>
+                                <td class="py-2 px-3 text-right text-gray-800 tabular-nums">{{ number_format($totals['pay_user_count']) }}</td>
+                                <td class="py-2 px-3 text-right text-gray-800 tabular-nums">{{ number_format($totals['order_count']) }}</td>
+                                <td class="py-2 px-3 text-right text-gray-800 tabular-nums">{{ number_format($totals['revenue'], 2) }}</td>
+                                <td class="py-2 px-3 text-right text-gray-800 tabular-nums">{{ $totals['register_to_role_rate'] }}</td>
+                                <td class="py-2 px-3 text-right text-gray-800 tabular-nums">{{ $totals['register_to_pay_rate'] }}</td>
+                                <td class="py-2 px-3 text-right text-gray-800 tabular-nums">{{ $totals['arppu'] === '-' ? '-' : number_format((float) $totals['arppu'], 2) }}</td>
                             </tr>
                         </tfoot>
                     </table>
