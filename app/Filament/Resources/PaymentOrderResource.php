@@ -32,6 +32,7 @@ class PaymentOrderResource extends Resource
             Forms\Components\TextInput::make('notify_times')->disabled()->label('重试次数'),
             Forms\Components\Select::make('status')
                 ->options(PaymentOrderStatus::labels())
+                ->disabled()
                 ->label('状态'),
         ]);
     }
@@ -88,6 +89,10 @@ class PaymentOrderResource extends Resource
                                 AdminAuditLog::record('retry_notify', 'payment_order', (string)$record->id, null, null, '批量重试');
                             } catch (\Exception $e) {
                                 $fail++;
+                                PaymentOperationLog::log($record->id, 'retry_notify',
+                                    '批量重试异常',
+                                    ['error' => $e->getMessage()]
+                                );
                             }
                         }
                     }
@@ -116,11 +121,14 @@ class PaymentOrderResource extends Resource
                             Notification::make()->warning()->title('发货失败')->body('请检查游戏方配置后重试')->send();
                         }
                     } catch (\Exception $e) {
+                        PaymentOperationLog::log($record->id, 'retry_notify',
+                            '列表页重试异常',
+                            ['error' => $e->getMessage()]
+                        );
                         Notification::make()->danger()->title('发货异常')->body($e->getMessage())->send();
                     }
                 }),
             Tables\Actions\ViewAction::make()->label('详情'),
-            Tables\Actions\EditAction::make(),
         ]);
     }
 

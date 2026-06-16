@@ -199,8 +199,17 @@ class PromotePerformance extends Page
             $valA = $a[$field] ?? 0;
             $valB = $b[$field] ?? 0;
 
+            // 处理 '-' 无数据标记
             if ($valA === '-') $valA = -1;
             if ($valB === '-') $valB = -1;
+
+            // 处理百分比字符串 (如 "12.34%")
+            if (is_string($valA) && str_ends_with($valA, '%')) {
+                $valA = (float) rtrim($valA, '%');
+            }
+            if (is_string($valB) && str_ends_with($valB, '%')) {
+                $valB = (float) rtrim($valB, '%');
+            }
 
             $valA = is_numeric($valA) ? (float) $valA : -1;
             $valB = is_numeric($valB) ? (float) $valB : -1;

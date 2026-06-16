@@ -8,6 +8,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\GameController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\LandingController;
 use Illuminate\Support\Facades\Route;
 
 // Aggregate payment gateway
@@ -23,6 +24,9 @@ Route::get('/notices/{notice}', [\App\Http\Controllers\NoticeController::class, 
 
 // Game play
 Route::get('/game/play/{game}', [\App\Http\Controllers\GameController::class, 'play'])->name('game.play');
+
+// Landing pages
+Route::get('/p/{promoteCode}', [LandingController::class, 'show'])->name('landing.show');
 
 // Guest routes
 Route::middleware('guest')->group(function () {

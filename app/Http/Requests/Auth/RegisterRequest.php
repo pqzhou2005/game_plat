@@ -18,6 +18,7 @@ class RegisterRequest extends FormRequest
             'mobile' => ['nullable', 'string', 'regex:/^1[3-9]\d{9}$/', 'unique:users,mobile'],
             'real_name' => ['required_with:id_card', 'string', 'max:50', 'regex:/^[\x{4e00}-\x{9fa5}]+$/u'],
             'id_card' => ['required_with:real_name', 'string', 'regex:/^\d{17}[\dXx]$/'],
+            'promote_code' => ['nullable', 'string', 'max:32'],
         ];
     }
 

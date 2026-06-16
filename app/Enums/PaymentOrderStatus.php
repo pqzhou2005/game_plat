@@ -14,7 +14,7 @@ class PaymentOrderStatus
             self::PENDING => '处理中',
             self::SUCCESS => '成功',
             self::FAILED  => '失败',
-            self::CLOSED  => '已退款',
+            self::CLOSED  => '已关闭',
         ];
     }
 }

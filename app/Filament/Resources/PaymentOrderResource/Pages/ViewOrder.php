@@ -230,15 +230,28 @@ class ViewOrder extends ViewRecord
                                     ->badge()
                                     ->color(fn(string $state): string => $state === 'success' ? 'success' : 'danger')
                                     ->formatStateUsing(fn(string $state): string => $state === 'success' ? '成功' : '失败'),
+                                \Filament\Infolists\Components\TextEntry::make('url')
+                                    ->label('通知地址')
+                                    ->copyable()
+                                    ->limit(50)
+                                    ->columnSpanFull(),
                                 \Filament\Infolists\Components\TextEntry::make('http_code')->label('HTTP状态码'),
+                                \Filament\Infolists\Components\TextEntry::make('error_message')
+                                    ->label('错误信息')
+                                    ->visible(fn(?string $state): bool => filled($state)),
                                 \Filament\Infolists\Components\TextEntry::make('response_body')
                                     ->label('响应内容')
                                     ->limit(200)
                                     ->copyable(),
-                                \Filament\Infolists\Components\TextEntry::make('error_message')
-                                    ->label('错误信息')
-                                    ->visible(fn(?string $state): bool => filled($state)),
-                            ])->columns(4)
+                                \Filament\Infolists\Components\TextEntry::make('request_params')
+                                    ->label('请求参数')
+                                    ->formatStateUsing(fn(mixed $state): string =>
+                                        is_array($state) ? json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) : ($state ?? '-')
+                                    )
+                                    ->monospace()
+                                    ->copyable()
+                                    ->columnSpanFull(),
+                            ])->columns(3)
                             ->defaultSort('created_at', 'desc'),
                     ])->visible(fn(\App\Models\PaymentOrder $record): bool => $record->gameNotifyLogs()->count() > 0),
 

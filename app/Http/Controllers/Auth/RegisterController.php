@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Services\AuthService;
 use App\Services\RealNameService;
+use App\Services\PromotionAttributionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -14,6 +15,7 @@ class RegisterController extends Controller
     public function __construct(
         private AuthService $authService,
         private RealNameService $realNameService,
+        private PromotionAttributionService $promotionAttributionService,
     ) {}
 
     public function create(Request $request)
@@ -26,6 +28,12 @@ class RegisterController extends Controller
     public function store(RegisterRequest $request)
     {
         $user = $this->authService->createUser($request->validated());
+
+        // 注册归因：记录用户来源推广入口
+        $this->promotionAttributionService->recordRegisterAttribution(
+            $user,
+            $request->validated()['promote_code'] ?? null
+        );
 
         if ($request->filled('real_name') && $request->filled('id_card')) {
             // 调中宣部 NPPA 接口实名认证

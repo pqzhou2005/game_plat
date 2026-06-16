@@ -40,6 +40,11 @@ class PaymentOrder extends Model
         return $this->hasMany(PaymentFlow::class, 'order_id');
     }
 
+    public function latestFlow(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(PaymentFlow::class, 'order_id')->latestOfMany();
+    }
+
     public function gameNotifyLogs(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(GameNotifyLog::class, 'payment_order_id');
