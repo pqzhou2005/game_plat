@@ -18,7 +18,7 @@ class PromoteResource extends Resource
     protected static ?string $navigationLabel = '推广入口';
     protected static ?string $modelLabel = '推广入口';
     protected static ?string $pluralModelLabel = '推广入口';
-    protected static ?string $navigationSort = 10;
+    protected static ?int $navigationSort = 10;
 
     public static function form(Form $form): Form
     {
