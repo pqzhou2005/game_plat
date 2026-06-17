@@ -283,8 +283,11 @@ esac
 mkdir -p "$NEW_RELEASE/bootstrap/cache"
 
 # 重新生成 Composer autoloader，确保路径相对于当前 release 而非 shared/vendor。
+# 注意：用 --no-scripts 跳过 post-autoload-dump（里面会跑 artisan package:discover，
+# 此时 storage 子目录还没建好，会报 "Please provide a valid cache path"）。
+# 等 storage 目录结构准备好后再手动跑 package:discover。
 log "重新生成 Composer autoloader"
-"$PHP_BIN" /usr/bin/composer dump-autoload -d "$NEW_RELEASE"
+"$PHP_BIN" /usr/bin/composer dump-autoload --no-scripts -d "$NEW_RELEASE"
 
 # =========================
 # 4. 在新 release 上准备 Laravel
@@ -301,6 +304,12 @@ fi
 
 log "确保 storage 软链接存在"
 run_in_release storage:link || true
+
+# 确保 Laravel 运行时子目录存在（storage:link 不会创建这些）。
+mkdir -p "$SHARED_DIR/storage/framework/views" "$SHARED_DIR/storage/framework/cache/data" "$SHARED_DIR/storage/logs"
+
+log "发现服务提供者"
+run_in_release package:discover
 
 log "生成生产缓存"
 run_in_release config:cache
