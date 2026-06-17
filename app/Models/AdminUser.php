@@ -2,12 +2,13 @@
 namespace App\Models;
 
 use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasAvatar;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-class AdminUser extends Authenticatable implements FilamentUser
+class AdminUser extends Authenticatable implements FilamentUser, HasAvatar
 {
     use HasFactory, Notifiable;
 
@@ -40,5 +41,10 @@ class AdminUser extends Authenticatable implements FilamentUser
     public function getFilamentName(): string
     {
         return $this->name ?? $this->username;
+    }
+
+    public function getFilamentAvatarUrl(): ?string
+    {
+        return 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; // 1x1 透明像素，不加载外部头像
     }
 }

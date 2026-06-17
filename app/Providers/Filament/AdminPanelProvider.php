@@ -33,7 +33,8 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Indigo,
             ])
-            ->font('Inter')
+            // 使用系统字体，不加载外部字体 CDN
+            ->font('system-ui, -apple-system, sans-serif', null, \Filament\FontProviders\LocalFontProvider::class)
             ->brandName('602管理后台')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
