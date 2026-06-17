@@ -155,6 +155,7 @@ if [ ! -f "$SHARED_DIR/.env" ]; then
 fi
 
 mkdir -p "$SHARED_DIR/storage"
+mkdir -p "$SHARED_DIR/storage/framework/views" "$SHARED_DIR/storage/framework/cache/data" "$SHARED_DIR/storage/logs"
 
 if [ "$VENDOR_MODE" = "shared" ] && [ ! -d "$SHARED_DIR/vendor" ]; then
     fail "VENDOR_MODE=shared，但缺少 $SHARED_DIR/vendor。请先准备 PHP 依赖。"
@@ -306,8 +307,6 @@ log "确保 storage 软链接存在"
 run_in_release storage:link || true
 
 # 确保 Laravel 运行时子目录存在（storage:link 不会创建这些）。
-mkdir -p "$SHARED_DIR/storage/framework/views" "$SHARED_DIR/storage/framework/cache/data" "$SHARED_DIR/storage/logs"
-
 log "发现服务提供者"
 run_in_release package:discover
 
