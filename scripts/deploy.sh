@@ -279,6 +279,10 @@ esac
 [ -f "$NEW_RELEASE/artisan" ] || fail "新版本目录缺少 artisan。"
 [ -d "$NEW_RELEASE/vendor" ] || fail "新版本目录缺少 vendor。请检查 VENDOR_MODE。"
 
+# 重新生成 Composer autoloader，确保路径相对于当前 release 而非 shared/vendor。
+log "重新生成 Composer autoloader"
+"$PHP_BIN" /usr/bin/composer dump-autoload -d "$NEW_RELEASE"
+
 # =========================
 # 4. 在新 release 上准备 Laravel
 # =========================
