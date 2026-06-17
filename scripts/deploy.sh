@@ -39,7 +39,7 @@ set -Eeuo pipefail
 BASE_DIR="/www/wwwroot/gameplat.bauniv.cn"
 
 # Git 仓库地址、远程名、分支。
-GIT_URL="https://github.com/pqzhou2005/game_plat.git"
+GIT_URL="git@github.com:pqzhou2005/game_plat.git"
 REMOTE="origin"
 BRANCH="master"
 
