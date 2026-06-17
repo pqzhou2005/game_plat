@@ -75,6 +75,11 @@ RUN_FRONTEND_BUILD=1
 # 是否修复目录权限。
 RUN_PERMISSION_FIX=1
 
+# 是否创建 public/storage 软链接。
+# 不使用 php artisan storage:link，因为部分宝塔环境会禁用 PHP exec()，
+# Laravel 的 storage:link 在某些版本/环境下会触发 exec()。
+RUN_STORAGE_PUBLIC_LINK=1
+
 # 保留最近几个版本，旧版本自动删除。
 KEEP_RELEASES=5
 
@@ -155,7 +160,12 @@ if [ ! -f "$SHARED_DIR/.env" ]; then
 fi
 
 mkdir -p "$SHARED_DIR/storage"
-mkdir -p "$SHARED_DIR/storage/framework/views" "$SHARED_DIR/storage/framework/cache/data" "$SHARED_DIR/storage/logs"
+mkdir -p "$SHARED_DIR/storage/app/public"
+mkdir -p "$SHARED_DIR/storage/framework/cache/data"
+mkdir -p "$SHARED_DIR/storage/framework/sessions"
+mkdir -p "$SHARED_DIR/storage/framework/testing"
+mkdir -p "$SHARED_DIR/storage/framework/views"
+mkdir -p "$SHARED_DIR/storage/logs"
 
 if [ "$VENDOR_MODE" = "shared" ] && [ ! -d "$SHARED_DIR/vendor" ]; then
     fail "VENDOR_MODE=shared，但缺少 $SHARED_DIR/vendor。请先准备 PHP 依赖。"
@@ -303,10 +313,18 @@ if [ "$RUN_MIGRATIONS" = "1" ]; then
     run_in_release migrate --force
 fi
 
-log "确保 storage 软链接存在"
-run_in_release storage:link || true
+if [ "$RUN_STORAGE_PUBLIC_LINK" = "1" ]; then
+    # 手工创建 Laravel 公开上传目录软链接：
+    #   public/storage -> shared/storage/app/public
+    #
+    # 这里不用 php artisan storage:link，避免宝塔禁用 PHP exec() 后报：
+    #   Call to undefined function Illuminate\Filesystem\exec()
+    log "确保 public/storage 软链接存在"
+    mkdir -p "$SHARED_DIR/storage/app/public"
+    rm -rf "$NEW_RELEASE/public/storage"
+    ln -sfn "$SHARED_DIR/storage/app/public" "$NEW_RELEASE/public/storage"
+fi
 
-# 确保 Laravel 运行时子目录存在（storage:link 不会创建这些）。
 log "发现服务提供者"
 run_in_release package:discover
 
@@ -333,6 +351,7 @@ mv -Tf "$BASE_DIR/current_tmp" "$CURRENT_LINK"
 if [ "$RUN_PERMISSION_FIX" = "1" ]; then
     # 权限修复失败不阻断发布，避免某些服务器权限限制导致整次发布失败。
     log "修复目录权限"
+    mkdir -p "$NEW_RELEASE/bootstrap/cache" "$NEW_RELEASE/public/build"
     chown -R "$WEB_USER:$WEB_GROUP" "$SHARED_DIR/storage" "$NEW_RELEASE/bootstrap/cache" "$NEW_RELEASE/public/build" 2>/dev/null || true
     chmod -R ug+rwX "$SHARED_DIR/storage" "$NEW_RELEASE/bootstrap/cache" "$NEW_RELEASE/public/build" 2>/dev/null || true
 fi
