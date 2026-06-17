@@ -12,6 +12,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Tables;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
@@ -151,6 +152,52 @@ class OrderReconciliation extends Page implements HasTable
                         ->when($data['amount_min'], fn(Builder $q) => $q->where('amount', '>=', $data['amount_min']))
                         ->when($data['amount_max'], fn(Builder $q) => $q->where('amount', '<=', $data['amount_max'])))
                     ->label('金额范围'),
+                Tables\Filters\Filter::make('quick_view')
+                    ->label('快捷筛选')
+                    ->form([
+                        \Filament\Forms\Components\Select::make('preset')
+                            ->label('订单视图')
+                            ->placeholder('全部订单')
+                            ->options([
+                                'pending_payment' => '待支付',
+                                'paid_success' => '支付成功',
+                                'deliver_success' => '发货成功',
+                                'deliver_failed' => '发货失败',
+                                'pending_deliver' => '待发货/通知中',
+                                'abnormal' => '异常订单',
+                            ]),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return match ($data['preset'] ?? null) {
+                            'pending_payment' => $query->where('status', PaymentOrderStatus::PENDING),
+                            'paid_success' => $query->where('status', PaymentOrderStatus::SUCCESS),
+                            'deliver_success' => $query->where('status', PaymentOrderStatus::SUCCESS)
+                                ->where('notify_status', NotifyStatus::SUCCESS),
+                            'deliver_failed' => $query->where('status', PaymentOrderStatus::SUCCESS)
+                                ->where('notify_status', NotifyStatus::FAILED),
+                            'pending_deliver' => $query->where('status', PaymentOrderStatus::SUCCESS)
+                                ->where(function (Builder $q) {
+                                    $q->whereNull('notify_status')
+                                      ->orWhere('notify_status', NotifyStatus::PENDING);
+                                }),
+                            'abnormal' => $query->where(function (Builder $q) {
+                                $q->where(function (Builder $q2) {
+                                    $q2->where('status', PaymentOrderStatus::SUCCESS)
+                                       ->where(function (Builder $q3) {
+                                           $q3->whereNull('notify_status')
+                                              ->orWhere('notify_status', '<>', NotifyStatus::SUCCESS);
+                                       });
+                                })->orWhere(function (Builder $q2) {
+                                    $q2->where('status', PaymentOrderStatus::SUCCESS)
+                                       ->where('notify_status', NotifyStatus::FAILED);
+                                })->orWhere(function (Builder $q2) {
+                                    $q2->where('status', PaymentOrderStatus::PENDING)
+                                       ->where('created_at', '<', now()->subMinutes(10));
+                                });
+                            }),
+                            default => $query,
+                        };
+                    }),
             ])
             ->actions([
                 // 手动补发
@@ -279,79 +326,6 @@ class OrderReconciliation extends Page implements HasTable
             ])
             ->defaultSort('created_at', 'desc')
             ->striped()
-            ->poll('30s')
-
-            // === 快捷 Tab 筛选 ===
-            ->tabs([
-                'all' => Tables\Tabs\Tab::make('全部订单')
-                    ->icon('heroicon-o-list-bullet'),
-                'pending_payment' => Tables\Tabs\Tab::make('待支付')
-                    ->icon('heroicon-o-clock')
-                    ->badge(fn() => PaymentOrder::where('status', PaymentOrderStatus::PENDING)->count())
-                    ->modifyQueryUsing(fn(Builder $query) => $query->where('status', PaymentOrderStatus::PENDING)),
-                'paid_success' => Tables\Tabs\Tab::make('支付成功')
-                    ->icon('heroicon-o-check-circle')
-                    ->badge(fn() => PaymentOrder::where('status', PaymentOrderStatus::SUCCESS)->count())
-                    ->modifyQueryUsing(fn(Builder $query) => $query->where('status', PaymentOrderStatus::SUCCESS)),
-                'deliver_success' => Tables\Tabs\Tab::make('发货成功')
-                    ->icon('heroicon-o-truck')
-                    ->modifyQueryUsing(fn(Builder $query) => $query
-                        ->where('status', PaymentOrderStatus::SUCCESS)
-                        ->where('notify_status', NotifyStatus::SUCCESS)),
-                'deliver_failed' => Tables\Tabs\Tab::make('发货失败')
-                    ->icon('heroicon-o-exclamation-triangle')
-                    ->badge(fn() => PaymentOrder::where('status', PaymentOrderStatus::SUCCESS)
-                        ->where('notify_status', NotifyStatus::FAILED)->count())
-                    ->modifyQueryUsing(fn(Builder $query) => $query
-                        ->where('status', PaymentOrderStatus::SUCCESS)
-                        ->where('notify_status', NotifyStatus::FAILED)),
-                'pending_deliver' => Tables\Tabs\Tab::make('待发货/通知中')
-                    ->icon('heroicon-o-arrow-path')
-                    ->badge(fn() => PaymentOrder::where('status', PaymentOrderStatus::SUCCESS)
-                        ->where(function (Builder $q) {
-                            $q->whereNull('notify_status')
-                              ->orWhere('notify_status', NotifyStatus::PENDING);
-                        })->count())
-                    ->modifyQueryUsing(fn(Builder $query) => $query
-                        ->where('status', PaymentOrderStatus::SUCCESS)
-                        ->where(function (Builder $q) {
-                            $q->whereNull('notify_status')
-                              ->orWhere('notify_status', NotifyStatus::PENDING);
-                        })),
-                'abnormal' => Tables\Tabs\Tab::make('异常订单')
-                    ->icon('heroicon-o-shield-exclamation')
-                    ->badge(fn() => PaymentOrder::where(function (Builder $q) {
-                        $q->where(function (Builder $q2) {
-                            $q2->where('status', PaymentOrderStatus::SUCCESS)
-                               ->where(function (Builder $q3) {
-                                   $q3->whereNull('notify_status')
-                                      ->orWhere('notify_status', '<>', NotifyStatus::SUCCESS);
-                               });
-                        })->orWhere(function (Builder $q2) {
-                            $q2->where('status', PaymentOrderStatus::SUCCESS)
-                               ->where('notify_status', NotifyStatus::FAILED);
-                        })->orWhere(function (Builder $q2) {
-                            $q2->where('status', PaymentOrderStatus::PENDING)
-                               ->where('created_at', '<', now()->subMinutes(10));
-                        });
-                    })->count())
-                    ->modifyQueryUsing(function (Builder $query) {
-                        return $query->where(function (Builder $q) {
-                            $q->where(function (Builder $q2) {
-                                $q2->where('status', PaymentOrderStatus::SUCCESS)
-                                   ->where(function (Builder $q3) {
-                                       $q3->whereNull('notify_status')
-                                          ->orWhere('notify_status', '<>', NotifyStatus::SUCCESS);
-                                   });
-                            })->orWhere(function (Builder $q2) {
-                                $q2->where('status', PaymentOrderStatus::SUCCESS)
-                                   ->where('notify_status', NotifyStatus::FAILED);
-                            })->orWhere(function (Builder $q2) {
-                                $q2->where('status', PaymentOrderStatus::PENDING)
-                                   ->where('created_at', '<', now()->subMinutes(10));
-                            });
-                        });
-                    }),
-            ]);
+            ->poll('30s');
     }
 }
