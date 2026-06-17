@@ -36,7 +36,7 @@ set -Eeuo pipefail
 # =========================
 
 # 发布根目录，不是项目 public，也不是 repo。
-BASE_DIR="/www/wwwroot/new602"
+BASE_DIR="/www/wwwroot/gameplat.bauniv.cn"
 
 # Git 仓库地址、远程名、分支。
 GIT_URL="https://github.com/pqzhou2005/game_plat.git"
@@ -52,7 +52,7 @@ CURRENT_LINK="$BASE_DIR/current"
 # PHP 和 npm 命令。
 # 宝塔如果默认 php 不是 8.2，建议改成完整路径：
 #   PHP_BIN="/www/server/php/82/bin/php"
-PHP_BIN="php"
+PHP_BIN="/www/server/php/82/bin/php"
 NPM_BIN="npm"
 
 # Web 服务运行用户。宝塔默认通常是 www:www。
