@@ -175,6 +175,9 @@ cd "$REPO_DIR"
 log "repo 目录：$REPO_DIR"
 log "目标分支：$REMOTE/$BRANCH"
 
+# 确保 remote 使用 SSH 协议（HTTPS 在大陆服务器上常被限速/超时）。
+git remote set-url "$REMOTE" "$GIT_URL"
+
 if [ "$FORCE_RESET" = "1" ]; then
     # 强制模式会丢弃 repo 里的所有本地改动。
     log "强制模式：拉取代码并 reset 到远程分支"
