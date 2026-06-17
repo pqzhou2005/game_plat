@@ -279,6 +279,9 @@ esac
 [ -f "$NEW_RELEASE/artisan" ] || fail "新版本目录缺少 artisan。"
 [ -d "$NEW_RELEASE/vendor" ] || fail "新版本目录缺少 vendor。请检查 VENDOR_MODE。"
 
+# 创建 Laravel 运行时目录（bootstrap/cache 被 gitignore，rsync 不会带过来）。
+mkdir -p "$NEW_RELEASE/bootstrap/cache"
+
 # 重新生成 Composer autoloader，确保路径相对于当前 release 而非 shared/vendor。
 log "重新生成 Composer autoloader"
 "$PHP_BIN" /usr/bin/composer dump-autoload -d "$NEW_RELEASE"
